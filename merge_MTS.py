@@ -37,7 +37,7 @@ else:
 if not output_filename.endswith('.MTS'):
     output_filename = output_filename + '.MTS'
     
-print output_filename
+print(output_filename)
 
 # Find input files
 
@@ -48,21 +48,22 @@ for filename in os.listdir('.'):
 MTSlist.sort()
 
 # Generate merge command
-# Example could be 'ffmpeg -i "concat:00007.MTS|00008.MTS|00009.MTS|00010.MTS" -c copy AKRG10.MTS'
+# See https://stackoverflow.com/questions/44798419/ffmpeg-conversion-from-h264-to-mp4-playing-too-fast/44799078#44799078 re frame rate
+# Example could be 'ffmpeg -r 30 -i "concat:00007.MTS|00008.MTS|00009.MTS|00010.MTS" -c copy AKRG10.MTS'
 
-merge_command = 'ffmpeg -i "concat:'
+merge_command = 'ffmpeg -r 30 -i "concat:'
 
 for filename in MTSlist:
     merge_command += filename + '|'
 
 merge_command = merge_command[:-1]  # Strip off trailing '|' character
 merge_command += '" -c copy %s' % output_filename    
-print merge_command
+print(merge_command)
 
 # Execute the command
 os.system(merge_command)
 
-print 'Done merging %s into %s' % (MTSlist, output_filename)
+print('Done merging %s into %s' % (MTSlist, output_filename))
 
 
 
