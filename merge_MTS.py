@@ -13,31 +13,44 @@ This will merge all MTS file in the current directory into one name <output_name
 The order will follow the default numerical enumeration of MTS files i.e.
 00000.MTS, 00001.MTS, ... 
 
-If no output name is specified the result will be stored in the default name: output.MTS
+If no output name is specified the result will be stored in the default name: combined.MTS and combined.mp4
 
-This works on Linux, Ubuntu18.10, python2.7
+This works on Ubuntu20.10, python3.8
 
-Ole Nielsen - 7 April 2019
+Ole Nielsen - 7 April 2019, 1 July 2020
+
 """
 
 import sys, os
 
 # Get output filename
-default_output_filename = 'output'    
+default_output_rootfilename = 'combined'
 args = sys.argv
 
 
 assert len(args) <= 2, 'You must specify max one argument - the output filename. You specified %s' %str(args)
 
 if len(args) == 2:
-    output_filename = args[1]
+    output = args[1]
 else:
-    output_filename = default_output_filename    
+    output = default_output_rootfilename    
 
-if not output_filename.endswith('.MTS'):
-    output_filename = output_filename + '.MTS'
-    
-print(output_filename)
+# Sanitize
+root, ext = os.path.splitext(output)
+if ext == 'mp4':
+    pass
+if ext == '':
+    output_filename = root + '.mp4'
+else:
+    msg = 'Given output filename (%s) must have extension .mp4 or no extension' % output
+    raise Exception(msg)
+
+
+MTS_filename = root + '.MTS'
+MP4_filename = root + '.mp4'
+
+print(MTS_filename, MP4_filename)
+
 
 # Find input files
 
@@ -50,6 +63,7 @@ MTSlist.sort()
 # Generate merge command
 # See https://stackoverflow.com/questions/44798419/ffmpeg-conversion-from-h264-to-mp4-playing-too-fast/44799078#44799078 re frame rate
 # Example could be 'ffmpeg -r 30 -i "concat:00007.MTS|00008.MTS|00009.MTS|00010.MTS" -c copy AKRG10.MTS'
+# This works but it is weird because ffprobe <MTS file> reveals that the framerate is 25 fps.
 
 merge_command = 'ffmpeg -r 30 -i "concat:'
 
@@ -57,13 +71,22 @@ for filename in MTSlist:
     merge_command += filename + '|'
 
 merge_command = merge_command[:-1]  # Strip off trailing '|' character
-merge_command += '" -c copy %s' % output_filename    
+merge_command += '" -c copy %s' % MTS_filename    
 print(merge_command)
 
 # Execute the command
 os.system(merge_command)
 
-print('Done merging %s into %s' % (MTSlist, output_filename))
+print('Done merging %s into %s' % (MTSlist, MTS_filename))
+print('Converting to %s' % MP4_filename)
 
+# Now convert to mp4
+# Source: https://stackoverflow.com/questions/24720063/how-can-i-convert-mts-file-avchd-to-mp4-by-ffmpeg-without-re-encoding-h264-v
+# ffmpeg -i input.m2ts -c:v copy -c:a aac -strict experimental -b:a 128k output.mp4
 
+# Both seem to work
+#conversion_command = 'ffmpeg -i %s -c:v copy -c:a copy -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
+conversion_command = 'ffmpeg -i %s -c:v copy -c:a mp3 -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
 
+print(conversion_command)
+os.system(conversion_command)
