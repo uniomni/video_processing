@@ -86,7 +86,16 @@ print('Converting to %s' % MP4_filename)
 
 # Both seem to work
 #conversion_command = 'ffmpeg -i %s -c:v copy -c:a copy -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
-conversion_command = 'ffmpeg -i %s -c:v copy -c:a mp3 -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
+#conversion_command = 'ffmpeg -i %s -c:v copy -c:a mp3 -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
+
+# From https://blog.tahvok.com/2013/10/deinterlacing-and-converting-mts-video.html: Deinterlacing
+#conversion_command = 'ffmpeg -i %s -vf yadif=1 -acodec mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
+conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:a mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
 
 print(conversion_command)
 os.system(conversion_command)
+
+# Good instructions about detecting interlaced videos
+# http://www.aktau.be/2013/09/22/detecting-interlaced-video-with-ffmpeg/
+#
+# ffmpeg -filter:v idet -frames:v 1000 -an -f rawvideo -y /dev/null -i combined.mp4
