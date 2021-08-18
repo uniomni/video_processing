@@ -90,7 +90,14 @@ print('Converting to %s' % MP4_filename)
 
 # From https://blog.tahvok.com/2013/10/deinterlacing-and-converting-mts-video.html: Deinterlacing
 #conversion_command = 'ffmpeg -i %s -vf yadif=1 -acodec mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
-conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:a mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
+#conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:a mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)  # Good quality, but almost as large as MTS.
+
+# From https://stackoverflow.com/questions/24720063/how-can-i-convert-mts-file-avchd-to-mp4-by-ffmpeg-without-re-encoding-h264-v
+#conversion_command = 'ffmpeg -i %s -c:v copy -c:a mp3 -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)  # Good quality, but may be interlaced
+
+# From ffmpeg manual: https://ffmpeg.org/ffmpeg-filters.html
+conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:v h264 -c:a mp3 %s' % (MTS_filename, MP4_filename)  # Good quality, progressive, small
+
 
 print(conversion_command)
 os.system(conversion_command)
@@ -99,3 +106,7 @@ os.system(conversion_command)
 # http://www.aktau.be/2013/09/22/detecting-interlaced-video-with-ffmpeg/
 #
 # ffmpeg -filter:v idet -frames:v 1000 -an -f rawvideo -y /dev/null -i combined.mp4
+
+
+# This is better
+# mediainfo --Inform='Video;%ScanType%,%ScanOrder%,%ScanType_StoreMethod%' combined.mp4
