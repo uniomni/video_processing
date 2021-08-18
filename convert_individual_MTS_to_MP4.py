@@ -38,7 +38,10 @@ for MTS_filename in MTSlist:
         # Now convert to mp4
 
         # From https://blog.tahvok.com/2013/10/deinterlacing-and-converting-mts-video.html: Deinterlacing
-        conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:a mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
+        #conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:a mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
+        # From ffmpeg manual: https://ffmpeg.org/ffmpeg-filters.html
+        conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:v h264 -c:a mp3 %s' % (MTS_filename, MP4_filename)  # Good quality, progressive, small
+
 
         print(conversion_command)
         os.system(conversion_command)
