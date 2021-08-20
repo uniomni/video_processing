@@ -25,7 +25,7 @@ import sys, os
 MTSlist = []
 for filename in os.listdir('.'):
     if filename.endswith('.MTS'):
-        MTSlist.append(filename)
+        MTSlist.append(filename.replace(' ', '\ '))        
 MTSlist.sort()
 
 for MTS_filename in MTSlist:
