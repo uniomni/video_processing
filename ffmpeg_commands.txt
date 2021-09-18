@@ -1,0 +1,7 @@
+Hand ffmpeg commandns
+
+
+# Create stop motion movie from photos (e.g. DSC_0000.JPG, DSC_0001.EPG, ...)
+# https://unix.stackexchange.com/questions/24014/creating-a-gif-animation-from-png-files
+
+ffmpeg -i DSC_%04d.JPG output.mp4
