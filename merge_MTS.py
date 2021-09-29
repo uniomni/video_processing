@@ -6,7 +6,7 @@ Camcorders often produce a collection of files for each recording. They are know
 This script will merge all MTS files in the current directory into one output MTS file.
 
 Usage:
-   python merge_MTS.py <output_name>
+   python merge_MTS.py <output_name> [quality]
 
 This will merge all MTS file in the current directory into one name <output_name>.
 
@@ -21,22 +21,44 @@ Ole Nielsen - 7 April 2019, 1 July 2020
 
 """
 
-import sys, os
+import sys, os, argparse
 
 # Get output filename
 default_output_rootfilename = 'combined'
-args = sys.argv
+
+quality_options = ['lossless', 'high', 'medium', 'low']
 
 
-assert len(args) <= 2, 'You must specify max one argument - the output filename. You specified %s' %str(args)
+#args = sys.argv
 
-if len(args) == 2:
-    output = args[1]
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-v', '--verbose', help='increase output verbosity', action='store_true')
+parser.add_argument('-o', '--output_name', type=str, help='The base filename you want the merged and converted files to be')
+parser.add_argument('-q', '--quality', type=str, choices=quality_options, help=f'Set the desired quality of the compressed output file. Allowed values are {quality_options}')
+args = parser.parse_args()
+if args.verbose:
+    print('verbosity turned on')
+
+print(args)
+
+if args.output_name is None:
+    output_name = default_output_rootfilename 
 else:
-    output = default_output_rootfilename    
+    output_name = args.output_name
 
-# Sanitize
-root, ext = os.path.splitext(output)
+if args.quality is None:
+    quality = 'high'
+else:
+    quality = args.quality
+    
+print(f'output_name = {output_name}')
+print(f'quality = {quality}')
+
+
+# Sanitize output_filename
+root, ext = os.path.splitext(output_name)
 if ext == 'mp4':
     pass
 if ext == '':
@@ -45,11 +67,10 @@ else:
     msg = 'Given output filename (%s) must have extension .mp4 or no extension' % output
     raise Exception(msg)
 
-
 MTS_filename = root + '.MTS'
 MP4_filename = root + '.mp4'
 
-print(MTS_filename, MP4_filename)
+print(f'Output files are {MTS_filename} and {MP4_filename}')
 
 
 # Find input files
@@ -58,7 +79,13 @@ MTSlist = []
 for filename in os.listdir('.'):
     if filename.endswith('.MTS'):
         MTSlist.append(filename)
+
+if len(MTSlist) == 0:
+    print('No MTS files found')
+    import sys; sys.exit() 
+        
 MTSlist.sort()
+
 
 # Generate merge command
 # See https://stackoverflow.com/questions/44798419/ffmpeg-conversion-from-h264-to-mp4-playing-too-fast/44799078#44799078 re frame rate
@@ -97,7 +124,7 @@ print('Converting to %s' % MP4_filename)
 
 # From ffmpeg manual: https://ffmpeg.org/ffmpeg-filters.html
 conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:v h264 -c:a mp3 %s' % (MTS_filename, MP4_filename)  # Good quality, progressive, small
-
+# Try ffmpeg -i input -c:v libx264 -preset slow -crf 22 -c:a copy output.mkv  # -crf 0  is lossless (https://trac.ffmpeg.org/wiki/Encode/H.264), 17 is virtually lossless, 23 is the default, 51 is the worst. 
 
 print(conversion_command)
 os.system(conversion_command)
