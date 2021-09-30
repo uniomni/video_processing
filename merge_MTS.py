@@ -5,8 +5,15 @@ Camcorders often produce a collection of files for each recording. They are know
 
 This script will merge all MTS files in the current directory into one output MTS file.
 
-Usage:
-   python merge_MTS.py <output_name> [quality]
+usage: merge_MTS.py [-h] [-v] [-o OUTPUT_NAME] [-q {lossless,veryhigh,high,medium,low,verylow}]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --verbose         increase output verbosity
+  -o OUTPUT_NAME, --output_name OUTPUT_NAME
+                        The base filename for the merged and converted files
+  -q {lossless,veryhigh,high,medium,low,verylow}, --quality {lossless,veryhigh,high,medium,low,verylow}
+                        Set the desired quality of the compressed output file.
 
 This will merge all MTS file in the current directory into one name <output_name>.
 
@@ -15,28 +22,52 @@ The order will follow the default numerical enumeration of MTS files i.e.
 
 If no output name is specified the result will be stored in the default name: combined.MTS and combined.mp4
 
-This works on Ubuntu20.10, python3.8
+Handy command to detect interlaced videos
+mediainfo --Inform='Video;%ScanType%,%ScanOrder%,%ScanType_StoreMethod%' combined.mp4
 
-Ole Nielsen - 7 April 2019, 1 July 2020
+
+This works on Ubuntu21.04, python3.8
+
+Ole Nielsen - 7 April 2019, 1 July 2020, 29 September 2021
 
 """
 
-import sys, os, argparse
+import time, sys, os, argparse
 
-# Get output filename
+# Defaults
 default_output_rootfilename = 'combined'
+default_quality = 'high'
 
-quality_options = ['lossless', 'high', 'medium', 'low']
+quality_map = {
+    'lossless': None,                            # Copy the video across   
+    'veryhigh': {'crf': 19, 'preset': 'slower'},
+    'high': {'crf': 21, 'preset': 'slow'},       
+    'medium': {'crf': 23, 'preset': 'medium'},   # ffmpeg default
+    'low': {'crf': 25, 'preset': 'fast'},
+    'verylow': {'crf': 27, 'preset': 'faster'}}                              
+
+# Options for crf are 0 (lossless) to 51 (worst). 
+# The default for mpeg is 23 (https://trac.ffmpeg.org/wiki/Encode/H.264, https://ffmpeg.org/ffmpeg-filters.html) 
+# Options for -preset are 
+# ultrafast
+# superfast
+# veryfast
+# faster
+# fast
+# medium – default preset
+# slow
+# slower
+# veryslow
+
+quality_options = quality_map.keys()
 
 
-#args = sys.argv
+# Parse commandline arguments
 
-
-import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', help='increase output verbosity', action='store_true')
-parser.add_argument('-o', '--output_name', type=str, help='The base filename you want the merged and converted files to be')
-parser.add_argument('-q', '--quality', type=str, choices=quality_options, help=f'Set the desired quality of the compressed output file. Allowed values are {quality_options}')
+parser.add_argument('-o', '--output_name', type=str, help='The base filename for the merged and converted files')
+parser.add_argument('-q', '--quality', type=str, choices=quality_options, help=f'Set the desired quality of the compressed output file.')
 args = parser.parse_args()
 if args.verbose:
     print('verbosity turned on')
@@ -49,13 +80,12 @@ else:
     output_name = args.output_name
 
 if args.quality is None:
-    quality = 'high'
+    quality = default_quality
 else:
     quality = args.quality
     
 print(f'output_name = {output_name}')
 print(f'quality = {quality}')
-
 
 # Sanitize output_filename
 root, ext = os.path.splitext(output_name)
@@ -64,11 +94,19 @@ if ext == 'mp4':
 if ext == '':
     output_filename = root + '.mp4'
 else:
-    msg = 'Given output filename (%s) must have extension .mp4 or no extension' % output
+    msg = f'Given output filename (output_name) must have extension .mp4 or no extension'
     raise Exception(msg)
 
-MTS_filename = root + '.MTS'
-MP4_filename = root + '.mp4'
+# Define quality parameters and derived filenames
+if quality == 'lossless':
+    quality_str = f'quality={quality}'
+else:        
+    preset = quality_map[quality]['preset']
+    crf = quality_map[quality]['crf']
+    quality_str = f'quality={quality}_crf={crf}_preset={preset}'
+    
+MTS_filename = root + f'_{quality_str}' + '.MTS'
+MP4_filename = root + f'_{quality_str}' + '.mp4'
 
 print(f'Output files are {MTS_filename} and {MP4_filename}')
 
@@ -82,7 +120,9 @@ for filename in os.listdir('.'):
 
 if len(MTSlist) == 0:
     print('No MTS files found')
-    import sys; sys.exit() 
+    work_to_do = False
+else:
+    work_to_do = True
         
 MTSlist.sort()
 
@@ -92,48 +132,35 @@ MTSlist.sort()
 # Example could be 'ffmpeg -r 30 -i "concat:00007.MTS|00008.MTS|00009.MTS|00010.MTS" -c copy AKRG10.MTS'
 # This works but it is weird because ffprobe <MTS file> reveals that the framerate is 25 fps.
 
-merge_command = 'ffmpeg -r 30 -i "concat:'
+if work_to_do:
+    merge_command = 'ffmpeg -r 30 -i "concat:'
+    for filename in MTSlist:
+        merge_command += filename + '|'
 
-for filename in MTSlist:
-    merge_command += filename + '|'
-
-merge_command = merge_command[:-1]  # Strip off trailing '|' character
-merge_command += '" -c copy %s' % MTS_filename    
-print(merge_command)
-
-# Execute the command
-os.system(merge_command)
-
-print('Done merging %s into %s' % (MTSlist, MTS_filename))
-print('Converting to %s' % MP4_filename)
-
-# Now convert to mp4
-# Source: https://stackoverflow.com/questions/24720063/how-can-i-convert-mts-file-avchd-to-mp4-by-ffmpeg-without-re-encoding-h264-v
-# ffmpeg -i input.m2ts -c:v copy -c:a aac -strict experimental -b:a 128k output.mp4
-
-# Both seem to work
-#conversion_command = 'ffmpeg -i %s -c:v copy -c:a copy -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
-#conversion_command = 'ffmpeg -i %s -c:v copy -c:a mp3 -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)
-
-# From https://blog.tahvok.com/2013/10/deinterlacing-and-converting-mts-video.html: Deinterlacing
-#conversion_command = 'ffmpeg -i %s -vf yadif=1 -acodec mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)
-#conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:a mp3 -ab 192k -vcodec mpeg4 -f mp4 -y -qscale 0 %s' % (MTS_filename, MP4_filename)  # Good quality, but almost as large as MTS.
-
-# From https://stackoverflow.com/questions/24720063/how-can-i-convert-mts-file-avchd-to-mp4-by-ffmpeg-without-re-encoding-h264-v
-#conversion_command = 'ffmpeg -i %s -c:v copy -c:a mp3 -strict experimental -b:a 128k %s' % (MTS_filename, MP4_filename)  # Good quality, but may be interlaced
-
-# From ffmpeg manual: https://ffmpeg.org/ffmpeg-filters.html
-conversion_command = 'ffmpeg -i %s -vf yadif=1 -c:v h264 -c:a mp3 %s' % (MTS_filename, MP4_filename)  # Good quality, progressive, small
-# Try ffmpeg -i input -c:v libx264 -preset slow -crf 22 -c:a copy output.mkv  # -crf 0  is lossless (https://trac.ffmpeg.org/wiki/Encode/H.264), 17 is virtually lossless, 23 is the default, 51 is the worst. 
-
-print(conversion_command)
-os.system(conversion_command)
-
-# Good instructions about detecting interlaced videos
-# http://www.aktau.be/2013/09/22/detecting-interlaced-video-with-ffmpeg/
-#
-# ffmpeg -filter:v idet -frames:v 1000 -an -f rawvideo -y /dev/null -i combined.mp4
+    merge_command = merge_command[:-1]  # Strip off trailing '|' character
+    merge_command += '" -c copy %s' % MTS_filename    
 
 
-# This is better
-# mediainfo --Inform='Video;%ScanType%,%ScanOrder%,%ScanType_StoreMethod%' combined.mp4
+    # Execute the command
+    print(merge_command)
+    os.system(merge_command)
+
+    print('Done merging %s into %s' % (MTSlist, MTS_filename))
+    print('Converting to %s' % MP4_filename)
+
+    # Convert to mp4 according to specified quality
+    if quality == 'lossless':
+        conversion_command = f'ffmpeg -i {MTS_filename} -c:v copy -c:a mp3 {MP4_filename}'    
+    else:
+        conversion_command = f'ffmpeg -i {MTS_filename} -vf yadif=1 -c:v h264 -preset {preset} -crf {crf} -c:a mp3 {MP4_filename}'
+
+    print(conversion_command)
+    timestamp = time.time()
+    os.system(conversion_command)
+    time_elapsed = time.time() - timestamp 
+
+    # Uncomment if time stamp is required
+    #filename = f'time_{quality}={time_elapsed:.2f}s'
+    #fid = open(filename, 'w')
+    #fid.write('Time: %f\n' % time_elapsed)
+    #fid.close()    
