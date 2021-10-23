@@ -1,7 +1,18 @@
-Hand ffmpeg commandns
+Handy ffmpeg commands
 
 
 # Create stop motion movie from photos (e.g. DSC_0000.JPG, DSC_0001.EPG, ...)
 # https://unix.stackexchange.com/questions/24014/creating-a-gif-animation-from-png-files
 
 ffmpeg -i DSC_%04d.JPG output.mp4
+
+
+# Rotate video
+# https://ostechnix.com/how-to-rotate-videos-using-ffmpeg-from-commandline/
+
+0 - Rotate by 90 degrees counter-clockwise and flip vertically. This is the default.
+1 - Rotate by 90 degrees clockwise.
+2 - Rotate by 90 degrees counter-clockwise.
+3 - Rotate by 90 degrees clockwise and flip vertically.
+
+ffmpeg -i VID_20201027_203735.mp4 -vf "transpose=clock" output.mp4
