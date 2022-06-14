@@ -89,9 +89,10 @@ print(f'quality = {quality}')
 
 # Sanitize output_filename
 root, ext = os.path.splitext(output_name)
-if ext == 'mp4':
+print('ext', ext)
+if ext == '.mp4':
     pass
-if ext == '':
+elif ext == '':
     output_filename = root + '.mp4'
 else:
     msg = f'Given output filename (output_name) must have extension .mp4 or no extension'
