@@ -117,7 +117,7 @@ print(f'Output files are {MTS_filename} and {MP4_filename}')
 MTSlist = []
 for filename in os.listdir('.'):
     if filename.endswith('.MTS'):
-        MTSlist.append(filename)
+        MTSlist.append(filename.replace(' ', '\\ '))    
 
 if len(MTSlist) == 0:
     print('No MTS files found')
